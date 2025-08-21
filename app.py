@@ -1,1 +1,72 @@
-{"nbformat":4,"nbformat_minor":0,"metadata":{"colab":{"provenance":[],"authorship_tag":"ABX9TyOfZ4mmEW+455KgvtsPhT7L"},"kernelspec":{"name":"python3","display_name":"Python 3"},"language_info":{"name":"python"}},"cells":[{"cell_type":"code","execution_count":null,"metadata":{"id":"ZPS0lbYxQBVZ"},"outputs":[],"source":["from langchain_community.embeddings import HuggingFaceEmbeddings\n","from langchain_community.vectorstores import Chroma\n","from langchain.chains import RetrievalQA\n","from langchain_community.llms import HuggingFacePipeline\n","from transformers import pipeline, AutoTokenizer, AutoModelForSeq2SeqLM\n","import pdfplumber\n","from langchain.text_splitter import RecursiveCharacterTextSplitter\n","import gradio as gr\n","\n","# Load and process PDF\n","def load_pdf(pdf_file):\n","    raw_text = \"\"\n","    with pdfplumber.open(pdf_file.name) as pdf:\n","        for page in pdf.pages:\n","            text = page.extract_text()\n","            if text:\n","                raw_text += text + \"\\n\"\n","    return raw_text\n","\n","# Build retriever\n","def build_retriever_from_text(raw_text):\n","    splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=100)\n","    chunks = splitter.split_text(raw_text)\n","\n","    embeddings = HuggingFaceEmbeddings(model_name=\"all-MiniLM-L6-v2\")\n","    vectorstore = Chroma.from_texts(chunks, embeddings)\n","    return vectorstore.as_retriever(search_kwargs={\"k\": 5})\n","\n","# Load LLM\n","def load_llm():\n","    model_name = \"google/flan-t5-base\"\n","    tokenizer = AutoTokenizer.from_pretrained(model_name)\n","    model = AutoModelForSeq2SeqLM.from_pretrained(model_name)\n","    pipe = pipeline(\"text2text-generation\", model=model, tokenizer=tokenizer, max_length=512)\n","    return HuggingFacePipeline(pipeline=pipe)\n","\n","# Initialize global objects\n","retriever = None\n","qa_chain = None\n","llm = load_llm()\n","\n","# Gradio interface logic\n","def setup_qa(pdf_file):\n","    global retriever, qa_chain\n","    text = load_pdf(pdf_file)\n","    retriever = build_retriever_from_text(text)\n","    qa_chain = RetrievalQA.from_chain_type(llm=llm, retriever=retriever)\n","    return \"✅ PDF uploaded and processed. You can now ask questions.\"\n","\n","def ask_question(query):\n","    if not qa_chain:\n","        return \"❗ Please upload a PDF first.\"\n","    result = qa_chain.invoke({\"query\": query})\n","    return result[\"result\"]\n","\n","# Gradio UI\n","with gr.Blocks() as demo:\n","    gr.Markdown(\"# 🤖 PDF ChatBot with LangChain + Chroma\")\n","    with gr.Row():\n","        pdf_file = gr.File(label=\"Upload PDF\")\n","        upload_button = gr.Button(\"Process PDF\")\n","    status = gr.Textbox(label=\"Status\")\n","\n","    with gr.Row():\n","        question = gr.Textbox(label=\"Ask a Question\")\n","        answer = gr.Textbox(label=\"Answer\")\n","        ask_button = gr.Button(\"Ask\")\n","\n","    upload_button.click(fn=setup_qa, inputs=pdf_file, outputs=status)\n","    ask_button.click(fn=ask_question, inputs=question, outputs=answer)\n","\n","demo.launch()"]}]}
+from langchain_community.embeddings import HuggingFaceEmbeddings
+from langchain_community.vectorstores import Chroma
+from langchain.chains import RetrievalQA
+from langchain_community.llms import HuggingFacePipeline
+from transformers import pipeline, AutoTokenizer, AutoModelForSeq2SeqLM
+import pdfplumber
+from langchain.text_splitter import RecursiveCharacterTextSplitter
+import gradio as gr
+
+# Load and process PDF
+def load_pdf(pdf_file):
+    raw_text = ""
+    with pdfplumber.open(pdf_file.name) as pdf:
+        for page in pdf.pages:
+            text = page.extract_text()
+            if text:
+                raw_text += text + "\n"
+    return raw_text
+
+# Build retriever
+def build_retriever_from_text(raw_text):
+    splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=100)
+    chunks = splitter.split_text(raw_text)
+
+    embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
+    vectorstore = Chroma.from_texts(chunks, embeddings)
+    return vectorstore.as_retriever(search_kwargs={"k": 5})
+
+# Load LLM
+def load_llm():
+    model_name = "google/flan-t5-base"
+    tokenizer = AutoTokenizer.from_pretrained(model_name)
+    model = AutoModelForSeq2SeqLM.from_pretrained(model_name)
+    pipe = pipeline("text2text-generation", model=model, tokenizer=tokenizer, max_length=512)
+    return HuggingFacePipeline(pipeline=pipe)
+
+# Initialize global objects
+retriever = None
+qa_chain = None
+llm = load_llm()
+
+# Gradio interface logic
+def setup_qa(pdf_file):
+    global retriever, qa_chain
+    text = load_pdf(pdf_file)
+    retriever = build_retriever_from_text(text)
+    qa_chain = RetrievalQA.from_chain_type(llm=llm, retriever=retriever)
+    return "✅ PDF uploaded and processed. You can now ask questions."
+
+def ask_question(query):
+    if not qa_chain:
+        return "❗ Please upload a PDF first."
+    result = qa_chain.invoke({"query": query})
+    return result["result"]
+
+# Gradio UI
+with gr.Blocks() as demo:
+    gr.Markdown("# 🤖 PDF ChatBot with LangChain + Chroma")
+    with gr.Row():
+        pdf_file = gr.File(label="Upload PDF")
+        upload_button = gr.Button("Process PDF")
+    status = gr.Textbox(label="Status")
+
+    with gr.Row():
+        question = gr.Textbox(label="Ask a Question")
+        answer = gr.Textbox(label="Answer")
+        ask_button = gr.Button("Ask")
+
+    upload_button.click(fn=setup_qa, inputs=pdf_file, outputs=status)
+    ask_button.click(fn=ask_question, inputs=question, outputs=answer)
+
+demo.launch()

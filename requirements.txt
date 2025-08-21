@@ -1,1 +1,7 @@
-{"nbformat":4,"nbformat_minor":0,"metadata":{"colab":{"provenance":[],"authorship_tag":"ABX9TyPgzwrkqK6bwDbKDM7oDU/f"},"kernelspec":{"name":"python3","display_name":"Python 3"},"language_info":{"name":"python"}},"cells":[{"cell_type":"code","execution_count":null,"metadata":{"id":"iG_4lEhbQgLl"},"outputs":[],"source":["langchain\n","langchain-community\n","chromadb\n","transformers\n","sentence-transformers\n","pdfplumber\n","gradio"]}]}
+langchain
+langchain-community
+chromadb
+transformers
+sentence-transformers
+pdfplumber
+gradio
